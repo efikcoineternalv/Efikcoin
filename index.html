@@ -1,562 +1,304 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- Playables SDK -->
-<script>// Playables SDK v1.0.0
-// Game lifecycle bridge: rAF-based game-ready detection + event communication
-(function() {
-  'use strict';
-
-  // Idempotency: skip if already initialized (e.g., server-side injection
-  // followed by client-side inject-javascript via the Bloks webview component).
-  if (window.playablesSDK) return;
-
-  var HANDLER_NAME = 'playablesGameEventHandler';
-  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
-  var RAF_FRAME_THRESHOLD = 3;
-
-  var gameReadySent = false;
-  var firstInteractionSent = false;
-  var errorSent = false;
-  var frameCount = 0;
-  var originalRAF = window.requestAnimationFrame;
-
-  // --- Transport Layer ---
-
-  function hasIOSBridge() {
-    return !!(window.webkit &&
-              window.webkit.messageHandlers &&
-              window.webkit.messageHandlers[HANDLER_NAME]);
-  }
-
-  function hasAndroidBridge() {
-    return !!(window[ANDROID_BRIDGE_NAME] &&
-              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
-  }
-
-  function isInIframe() {
-    return !!(window.parent && window.parent !== window);
-  }
-
-  function sendEvent(eventName, payload) {
-    var message = {
-      type: eventName,
-      payload: payload || {},
-      timestamp: Date.now()
-    };
-
-    if (hasIOSBridge()) {
-      try {
-        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
-      } catch (e) { /* ignore */ }
-      return;
-    }
-
-    if (hasAndroidBridge()) {
-    try {
-      var p = payload || {};
-      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
-      p.timestamp = message.timestamp;
-      window[ANDROID_BRIDGE_NAME].postEvent(
-        eventName,
-        JSON.stringify(p)
-      );
-    } catch (e) { /* ignore */ }
-    return;
-  }
-
-    if (isInIframe()) {
-      try {
-        window.parent.postMessage(message, '*');
-      } catch (e) { /* ignore */ }
-      return;
-    }
-  }
-
-  // --- rAF Game-Ready Detection ---
-
-  function onFrame() {
-    if (gameReadySent) return;
-
-    frameCount++;
-    if (frameCount >= RAF_FRAME_THRESHOLD) {
-      gameReadySent = true;
-      sendEvent('game_ready', {
-        frame_count: frameCount,
-        detected_at: Date.now()
-      });
-      return;
-    }
-
-    originalRAF.call(window, onFrame);
-  }
-
-  if (originalRAF) {
-    window.requestAnimationFrame = function(callback) {
-      if (!gameReadySent) {
-        return originalRAF.call(window, function(timestamp) {
-          frameCount++;
-          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
-            gameReadySent = true;
-            sendEvent('game_ready', {
-              frame_count: frameCount,
-              detected_at: Date.now()
-            });
-          }
-          callback(timestamp);
-        });
-      }
-      return originalRAF.call(window, callback);
-    };
-  }
-
-  // --- First User Interaction Detection ---
-
-  function setupFirstInteractionDetection() {
-    var events = ['touchstart', 'mousedown', 'keydown'];
-
-    function onFirstInteraction() {
-      if (firstInteractionSent) return;
-      firstInteractionSent = true;
-      sendEvent('user_interaction_start', null);
-
-      for (var i = 0; i < events.length; i++) {
-        document.removeEventListener(events[i], onFirstInteraction, true);
-      }
-    }
-
-    for (var i = 0; i < events.length; i++) {
-      document.addEventListener(events[i], onFirstInteraction, true);
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
-  } else {
-    setupFirstInteractionDetection();
-  }
-
-  // --- Auto Error Capture ---
-
-  window.addEventListener('error', function(event) {
-    if (errorSent) return;
-    errorSent = true;
-    sendEvent('error', {
-      message: event.message || 'Unknown error',
-      source: event.filename || '',
-      lineno: event.lineno || 0,
-      colno: event.colno || 0,
-      auto_captured: true
-    });
-  });
-
-  window.addEventListener('unhandledrejection', function(event) {
-    if (errorSent) return;
-    errorSent = true;
-    var reason = event.reason;
-    sendEvent('error', {
-      message: (reason instanceof Error) ? reason.message : String(reason),
-      type: 'unhandled_promise_rejection',
-      auto_captured: true
-    });
-  });
-
-  // --- Public API ---
-
-  window.playablesSDK = {
-    complete: function(score) {
-      sendEvent('game_ended', {
-        score: score,
-        completed: true
-      });
-    },
-
-    error: function(message) {
-      if (errorSent) return;
-      errorSent = true;
-      sendEvent('error', {
-        message: message || 'Unknown error',
-        auto_captured: false
-      });
-    },
-
-    sendEvent: function(eventName, payload) {
-      if (!eventName || typeof eventName !== 'string') return;
-      sendEvent(eventName, payload);
-    }
-  };
-
-  // Kick off rAF detection in case no game code calls rAF immediately
-  if (originalRAF) {
-    originalRAF.call(window, onFrame);
-  }
-})();</script>
-<!-- PLAYABLE_TOUCH_PATCH_V1 --><script>
-(function() {
-  if (window.__playableTouchPatchInstalled) return;
-  window.__playableTouchPatchInstalled = true;
-  var origAdd = EventTarget.prototype.addEventListener;
-  var blockedTypes = { touchstart: 1, touchmove: 1, wheel: 1 };
-  EventTarget.prototype.addEventListener = function(type, listener, options) {
-    if (blockedTypes[type]) {
-      if (options === undefined || options === null) {
-        options = { passive: true };
-      } else if (typeof options === 'boolean') {
-        options = { capture: options, passive: true };
-      } else {
-        options = Object.assign({}, options, { passive: true });
-      }
-    }
-    return origAdd.call(this, type, listener, options);
-  };
-})();
-</script><script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EFIKCOIN (EFC) - World Wallet</title>
-<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
-<style>
-:root{--gold:#FFD700;--bg:#0a0a0b;--card:#141418;--text:#e8e8e8;--muted:#9aa0a6}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;background:radial-gradient(1200px 800px at 70% -10%,#1a1a22,var(--bg));color:var(--text)}
-header{padding:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;border-bottom:1px solid #222}
-.brand{display:flex;align-items:center;gap:12px}
-.logo{width:44px;height:44px;border-radius:50%;object-fit:cover;box-shadow:0 0 20px rgba(255,215,0,.3);background:#000}
-h1{margin:0;font-size:20px}small{color:var(--muted)}
-.btn{background:var(--gold);color:#000;border:0;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.btn-ghost{background:transparent;border:1px solid #333;color:var(--text)}
-.container{max-width:1100px;margin:0 auto;padding:20px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
-.card{background:var(--card);border:1px solid #222;border-radius:16px;padding:16px}
-.card h3{margin:0 0 8px 0;font-size:14px;color:var(--muted);font-weight:600}
-.value{font-size:22px;font-weight:800}
-.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-input,textarea,select{background:#0f0f13;border:1px solid #2a2a33;color:var(--text);padding:10px;border-radius:10px;width:100%}
-label{font-size:12px;color:var(--muted);display:block;margin:8px 0 4px}
-.tabs{display:flex;gap:8px;margin:20px 0;flex-wrap:wrap}
-.tab{padding:8px 12px;border-radius:10px;background:#1a1a22;border:1px solid #2a2a33;cursor:pointer}
-.tab.active{background:var(--gold);color:#000;border-color:var(--gold)}
-.section{display:none}.section.active{display:block}
-.footer{margin:40px 0;color:var(--muted);font-size:12px;text-align:center}
-.toast{position:fixed;right:16px;bottom:16px;background:#111;border:1px solid #333;padding:12px 14px;border-radius:12px;max-width:320px;display:none;z-index:99}
-a{color:var(--gold);text-decoration:none}
-.badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#1e1e26;border:1px solid #333;font-size:12px}
-.addr{font-family:ui-monospace,Menlo,Consolas,monospace}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ECE Pay Wallet | Efikcoin EFC</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="https://ipfs.io/ipfs/bafybeihrzyodihyp5met2hs32ppj37qlowuxarvs2lnlrgujgrlwxc7fwe">
+  <style>body{font-family:Inter,sans-serif}</style>
 </head>
-<body>
-<header>
-  <div class="brand">
-    <img class="logo" src="https://ipfs.io/ipfs/bafybeihrzyodihyp5met2hs32ppj37qlowuxarvs2lnlrgujgrlwxc7fwe" alt="EFIKCOIN">
-    <div>
-      <h1 data-i18n="title">EFIKCOIN (EFC)</h1>
-      <small data-i18n="subtitle">Life Empowerment for Sustainable Human Lives</small>
-    </div>
-  </div>
-  <div class="row">
-    <select id="langSel" class="btn-ghost" style="padding:8px 10px">
-      <option value="en">English</option>
-      <option value="fr">Français</option>
-      <option value="es">Español</option>
-      <option value="hi">हिन्दी</option>
-      <option value="ar">العربية</option>
-      <option value="zh">中文</option>
-    </select>
-    <button id="connectBtn" class="btn" data-i18n="connect">Connect Wallet</button>
-  </div>
-</header>
-
-<div class="container">
-  <div class="card" style="margin-bottom:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-      <div>
-        <span class="badge">BSC Mainnet</span>
-        <span class="badge addr" id="contractAddr">0x677C...fED1</span>
-        <button class="btn-ghost" id="copyContract" style="padding:4px 8px">Copy</button>
-        <a id="bscLink" target="_blank" style="margin-left:6px">BscScan</a>
-      </div>
-      <div>
-        <span data-i18n="user">User</span>: <span class="addr" id="userAddr">-</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="grid">
-    <div class="card"><h3 data-i18n="balance">Balance</h3><div class="value" id="bal">-</div></div>
-    <div class="card"><h3 data-i18n="staked">Staked</h3><div class="value" id="staked">-</div></div>
-    <div class="card"><h3 data-i18n="rewards">Pending Rewards</h3><div class="value" id="rewards">-</div></div>
-    <div class="card"><h3 data-i18n="totalStaked">Total Staked</h3><div class="value" id="totalStaked">-</div></div>
-    <div class="card"><h3>APY</h3><div class="value" id="apy">8%</div></div>
-    <div class="card"><h3 data-i18n="trading">Trading</h3><div class="value" id="trading">-</div></div>
-  </div>
-
-  <div class="tabs">
-    <div class="tab active" data-tab="transfer" data-i18n="tabTransfer">Transfer</div>
-    <div class="tab" data-tab="stake" data-i18n="tabStake">Stake</div>
-    <div class="tab" data-tab="airdrop" data-i18n="tabAirdrop">Airdrop</div>
-    <div class="tab" data-tab="admin" data-i18n="tabAdmin">Admin</div>
-    <div class="tab" data-tab="trade" data-i18n="tabTrade">Trade</div>
-  </div>
-
-  <div id="transfer" class="section active">
-    <div class="grid">
-      <div class="card">
-        <h3 data-i18n="send">Send EFC</h3>
-        <label data-i18n="to">To Address</label><input id="toAddr" placeholder="0x...">
-        <label data-i18n="amount">Amount</label><input id="sendAmt" type="number" placeholder="100">
-        <div class="row"><button class="btn" onclick="doTransfer()" data-i18n="sendBtn">Transfer</button></div>
-      </div>
-      <div class="card">
-        <h3 data-i18n="approve">Approve</h3>
-        <label>Spender</label><input id="spender" placeholder="0x...">
-        <label data-i18n="amount">Amount</label><input id="approveAmt" type="number" placeholder="1000">
-        <div class="row"><button class="btn" onclick="doApprove()" data-i18n="approveBtn">Approve</button></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="stake" class="section">
-    <div class="grid">
-      <div class="card">
-        <h3 data-i18n="stakeDeposit">Stake (Deposit)</h3>
-        <label data-i18n="amount">Amount</label><input id="depAmt" type="number" placeholder="1000">
-        <div class="row">
-          <button class="btn" onclick="doDeposit()" data-i18n="deposit">Deposit</button>
-          <button class="btn-ghost" onclick="doWithdrawPrompt()" data-i18n="withdraw">Withdraw</button>
-        </div>
-      </div>
-      <div class="card">
-        <h3 data-i18n="rewards">Rewards</h3>
-        <p style="color:var(--muted)" data-i18n="rewardsInfo">Claim your 8% APY rewards anytime.</p>
-        <div class="row">
-          <button class="btn" onclick="doClaim()" data-i18n="claim">Claim Rewards</button>
-          <button class="btn-ghost" onclick="loadData()" data-i18n="refresh">Refresh</button>
-        </div>
-      </div>
-      <div class="card">
-        <h3 data-i18n="fund">Fund Staking Pool (Owner)</h3>
-        <label data-i18n="amount">Amount</label><input id="fundAmt" type="number" placeholder="50000">
-        <div class="row"><button class="btn" onclick="doFund()" data-i18n="fundBtn">Fund</button></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="airdrop" class="section">
-    <div class="grid">
-      <div class="card">
-        <h3>Airdrop (Same amount)</h3>
-        <label>Recipients (comma or new line)</label><textarea id="airAddrs" rows="4" placeholder="0xabc..., 0xdef..."></textarea>
-        <label>Amount each</label><input id="airAmt" type="number" placeholder="10">
-        <div class="row"><button class="btn" onclick="doAirdrop()">Send Airdrop</button></div>
-      </div>
-      <div class="card">
-        <h3>Airdrop Varied</h3>
-        <label>Recipients</label><textarea id="airAddrs2" rows="3" placeholder="0x1,0x2"></textarea>
-        <label>Amounts (same order)</label><textarea id="airAmts2" rows="3" placeholder="10,20"></textarea>
-        <div class="row"><button class="btn" onclick="doAirdropVaried()">Send Varied</button></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="admin" class="section">
-    <div class="grid">
-      <div class="card">
-        <h3>Open Trading</h3>
-        <p style="color:var(--muted)">Enable public trading permanently.</p>
-        <button class="btn" onclick="doOpenTrading()">openTrading()</button>
-      </div>
-      <div class="card">
-        <h3>Set Pair</h3>
-        <label>Pair address</label><input id="pairAddr" placeholder="Pancake LP address">
-        <label>Status</label><select id="pairStatus"><option value="true">true</option><option value="false">false</option></select>
-        <div class="row"><button class="btn" onclick="doSetPair()">Set Pair</button></div>
-      </div>
-      <div class="card">
-        <h3>Fee Exempt</h3>
-        <label>Address</label><input id="feeAddr" placeholder="0x...">
-        <label>Exempt</label><select id="feeStatus"><option value="true">true</option><option value="false">false</option></select>
-        <div class="row"><button class="btn" onclick="doSetFee()">setFeeExempt</button></div>
-      </div>
-      <div class="card">
-        <h3>Burn</h3>
-        <label>Amount</label><input id="burnAmt" type="number" placeholder="1000">
-        <div class="row"><button class="btn" onclick="doBurn()">Burn</button></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="trade" class="section">
-    <div class="card">
-      <h3 data-i18n="tradeTitle">Buy / Sell EFC</h3>
-      <p style="color:var(--muted)" data-i18n="tradeInfo">Trade on PancakeSwap (BSC). Make sure trading is open.</p>
-      <div class="row">
-        <a class="btn" id="buyLink" target="_blank" data-i18n="buy">Buy on PancakeSwap</a>
-        <a class="btn-ghost" id="sellLink" target="_blank" data-i18n="sell">Sell on PancakeSwap</a>
-      </div>
-      <p style="margin-top:12px"><span data-i18n="fees">Fees</span>: <span id="fees">-</span> | <span data-i18n="supply">Supply</span>: <span id="supply">-</span></p>
-    </div>
-  </div>
-
-  <div class="footer">
-    Contract: <a href="https://bscscan.com/address/0x677Ce9CBa67f7484ea951a12897CE780cFd8fED1" target="_blank">0x677Ce9CBa67f7484ea951a12897CE780cFd8fED1</a> •
-    Pair: <a href="https://bscscan.com/address/0xa1DD6C528882Dc19EcCbC967F50bBC121A29630e" target="_blank">0xa1DD...630e</a> •
-    IPFS Logo: ipfs://bafybeihrzyodihyp5met2hs32ppj37qlowuxarvs2lnlrgujgrlwxc7fwe •
-    <a href="https://github.com/efikcoineternalv/EFC" target="_blank">GitHub</a>
-  </div>
-</div>
-
-<div id="toast" class="toast"></div>
+<body class="bg-gray-900 text-white">
+  <div id="app" class="min-h-screen"></div>
 
 <script>
-const CONTRACT_ADDRESS = "0x677Ce9CBa67f7484ea951a12897CE780cFd8fED1";
-const PAIR_ADDRESS = "0xa1DD6C528882Dc19EcCbC967F50bBC121A29630e";
-const LOGO_IPFS = "ipfs://bafybeihrzyodihyp5met2hs32ppj37qlowuxarvs2lnlrgujgrlwxc7fwe";
-const ABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"recipients","type":"uint256"}],"name":"AirdropCompleted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"RewardsClaimed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Staked","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Unstaked","type":"event"},{"inputs":[],"name":"APY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"DEAD","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address[]","name":"recipients","type":"address[]"},{"internalType":"uint256","name":"amountEach","type":"uint256"}],"name":"airdrop","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address[]","name":"recipients","type":"address[]"},{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"name":"airdropVaried","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"o","type":"address"},{"internalType":"address","name":"s","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"s","type":"address"},{"internalType":"uint256","name":"a","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"a","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"burn","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"buyFee","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"claimRewards","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"deposit","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"fundStaking","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isFeeExempt","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isMaxExempt","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isPair","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxWallet","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"openTrading","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"pendingReward","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"sellFee","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"a","type":"address"},{"internalType":"bool","name":"e","type":"bool"}],"name":"setFeeExempt","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"a","type":"address"},{"internalType":"bool","name":"e","type":"bool"}],"name":"setMaxExempt","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"pair","type":"address"},{"internalType":"bool","name":"status","type":"bool"}],"name":"setPair","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"stakeStart","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"staked","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"tokenURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"pure","type":"function"},{"inputs":[],"name":"totalStaked","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"tradingOpen","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"a","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"f","type":"address"},{"internalType":"address","name":"t","type":"address"},{"internalType":"uint256","name":"a","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"treasuryWallet","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},{"stateMutability":"payable","type":"receive"}];
+const { ethers } = window.ethers;
 
-const translations = {
-  en:{title:"EFIKCOIN (EFC)",subtitle:"Life Empowerment for Sustainable Human Lives",connect:"Connect Wallet",user:"User",balance:"Balance",staked:"Staked",rewards:"Pending Rewards",totalStaked:"Total Staked",trading:"Trading",tabTransfer:"Transfer",tabStake:"Stake",tabAirdrop:"Airdrop",tabAdmin:"Admin",tabTrade:"Trade",send:"Send EFC",to:"To Address",amount:"Amount",sendBtn:"Transfer",approve:"Approve",approveBtn:"Approve",stakeDeposit:"Stake (Deposit)",deposit:"Deposit",withdraw:"Withdraw",claim:"Claim Rewards",refresh:"Refresh",rewardsInfo:"Claim your 8% APY rewards anytime.",fund:"Fund Staking Pool (Owner)",fundBtn:"Fund",tradeTitle:"Buy / Sell EFC",tradeInfo:"Trade on PancakeSwap (BSC). Make sure trading is open.",buy:"Buy on PancakeSwap",sell:"Sell on PancakeSwap",fees:"Fees",supply:"Supply"},
-  fr:{title:"EFIKCOIN (EFC)",subtitle:"Autonomisation de la vie pour des vies humaines durables",connect:"Connecter Portefeuille",user:"Utilisateur",balance:"Solde",staked:"Mis en jeu",rewards:"Récompenses en attente",totalStaked:"Total misé",trading:"Trading",tabTransfer:"Transfert",tabStake:"Staking",tabAirdrop:"Airdrop",tabAdmin:"Admin",tabTrade:"Échanger",send:"Envoyer EFC",to:"Adresse",amount:"Montant",sendBtn:"Transférer",approve:"Approuver",approveBtn:"Approuver",stakeDeposit:"Staker (Dépôt)",deposit:"Déposer",withdraw:"Retirer",claim:"Réclamer",refresh:"Actualiser",rewardsInfo:"Réclamez vos récompenses APY 8% à tout moment.",fund:"Financer le pool (Propriétaire)",fundBtn:"Financer",tradeTitle:"Acheter / Vendre EFC",tradeInfo:"Échangez sur PancakeSwap (BSC).",buy:"Acheter",sell:"Vendre",fees:"Frais",supply:"Offre"},
-  es:{title:"EFIKCOIN (EFC)",subtitle:"Empoderamiento de vida para vidas humanas sostenibles",connect:"Conectar Billetera",user:"Usuario",balance:"Saldo",staked:"En staking",rewards:"Recompensas pendientes",totalStaked:"Total en staking",trading:"Trading",tabTransfer:"Transferir",tabStake:"Stake",tabAirdrop:"Airdrop",tabAdmin:"Admin",tabTrade:"Comerciar",send:"Enviar EFC",to:"Dirección",amount:"Cantidad",sendBtn:"Transferir",approve:"Aprobar",approveBtn:"Aprobar",stakeDeposit:"Stake (Depósito)",deposit:"Depositar",withdraw:"Retirar",claim:"Reclamar",refresh:"Actualizar",rewardsInfo:"Reclama tus recompensas 8% APY.",fund:"Fondear pool (Dueño)",fundBtn:"Fondear",tradeTitle:"Comprar / Vender EFC",tradeInfo:"Opera en PancakeSwap (BSC).",buy:"Comprar",sell:"Vender",fees:"Comisiones",supply:"Suministro"},
-  hi:{title:"EFIKCOIN (EFC)",subtitle:"सतत मानव जीवन के लिए जीवन सशक्तिकरण",connect:"वॉलेट कनेक्ट करें",user:"उपयोगकर्ता",balance:"बैलेंस",staked:"स्टेक्ड",rewards:"लंबित पुरस्कार",totalStaked:"कुल स्टेक्ड",trading:"ट्रेडिंग",tabTransfer:"ट्रांसफर",tabStake:"स्टेक",tabAirdrop:"एयरड्रॉप",tabAdmin:"एडमिन",tabTrade:"ट्रेड",send:"EFC भेजें",to:"पता",amount:"राशि",sendBtn:"भेजें",approve:"अनुमोदन",approveBtn:"अनुमोदन",stakeDeposit:"स्टेक (जमा)",deposit:"जमा",withdraw:"निकालें",claim:"क्लेम",refresh:"रिफ्रेश",rewardsInfo:"अपना 8% APY कभी भी क्लेम करें।",fund:"स्टेकिंग पूल फंड करें",fundBtn:"फंड",tradeTitle:"EFC खरीदें / बेचें",tradeInfo:"PancakeSwap पर ट्रेड करें।",buy:"खरीदें",sell:"बेचें",fees:"शुल्क",supply:"आपूर्ति"},
-  ar:{title:"EFIKCOIN (EFC)",subtitle:"تمكين الحياة من أجل حياة بشرية مستدامة",connect:"ربط المحفظة",user:"المستخدم",balance:"الرصيد",staked:"مرهون",rewards:"المكافآت المعلقة",totalStaked:"إجمالي المرهون",trading:"التداول",tabTransfer:"تحويل",tabStake:"ستاكينغ",tabAirdrop:"إيردروب",tabAdmin:"الإدارة",tabTrade:"تداول",send:"إرسال EFC",to:"العنوان",amount:"المبلغ",sendBtn:"تحويل",approve:"موافقة",approveBtn:"موافقة",stakeDeposit:"ستاك (إيداع)",deposit:"إيداع",withdraw:"سحب",claim:"المطالبة",refresh:"تحديث",rewardsInfo:"اطلب مكافآت 8% APY في أي وقت.",fund:"تمويل المجمع (المالك)",fundBtn:"تمويل",tradeTitle:"شراء / بيع EFC",tradeInfo:"تداول على PancakeSwap.",buy:"شراء",sell:"بيع",fees:"الرسوم",supply:"العرض"},
-  zh:{title:"EFIKCOIN (EFC)",subtitle:"赋能生命，实现可持续人类生活",connect:"连接钱包",user:"用户",balance:"余额",staked:"已质押",rewards:"待领奖励",totalStaked:"总质押",trading:"交易",tabTransfer:"转账",tabStake:"质押",tabAirdrop:"空投",tabAdmin:"管理",tabTrade:"交易",send:"发送 EFC",to:"地址",amount:"数量",sendBtn:"转账",approve:"授权",approveBtn:"授权",stakeDeposit:"质押（存入）",deposit:"存入",withdraw:"取出",claim:"领取",refresh:"刷新",rewardsInfo:"随时领取8%年化奖励。",fund:"为质押池注资（所有者）",fundBtn:"注资",tradeTitle:"买卖 EFC",tradeInfo:"在 PancakeSwap 交易。",buy:"购买",sell:"出售",fees:"费用",supply:"供应量"}
+// ===== YOUR EFKICOIN CONFIG =====
+const ECE = {
+  address: "0x677ce9cba67f7484ea951a12897ce780cfd8fed1",
+  symbol: "EFC",
+  name: "Efikcoin",
+  decimals: 18,
+  logo: "https://ipfs.io/ipfs/bafybeihrzyodihyp5met2hs32ppj37qlowuxarvs2lnlrgujgrlwxc7fwe",
+  chainId: 56
 };
 
-let provider, signer, contract, userAddr, decimals=18;
+const BSC_RPC = "https://bsc-dataseed.binance.org/";
+const PANCAKE_ROUTER = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
+const BUSD = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
+const WBNB = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
 
-function setLang(l){
-  const t=translations[l]||translations.en;
-  document.querySelectorAll('[data-i18n]').forEach(el=>{
-    const k=el.getAttribute('data-i18n'); if(t[k]) el.textContent=t[k];
-  });
-  document.documentElement.lang=l;
-  document.documentElement.dir = l==='ar' ? 'rtl' : 'ltr';
-  localStorage.setItem('efc_lang',l);
+const ECE_ABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"recipients","type":"uint256"}],"name":"AirdropCompleted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"RewardsClaimed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Staked","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Unstaked","type":"event"},{"inputs":[],"name":"APY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"DEAD","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address[]","name":"recipients","type":"address[]"},{"internalType":"uint256","name":"amountEach","type":"uint256"}],"name":"airdrop","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address[]","name":"recipients","type":"address[]"},{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"name":"airdropVaried","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"o","type":"address"},{"internalType":"address","name":"s","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"s","type":"address"},{"internalType":"uint256","name":"a","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"a","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"burn","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"buyFee","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"claimRewards","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"deposit","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"fundStaking","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isFeeExempt","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isMaxExempt","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isPair","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxWallet","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"openTrading","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"pendingReward","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"sellFee","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"a","type":"address"},{"internalType":"bool","name":"e","type":"bool"}],"name":"setFeeExempt","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"a","type":"address"},{"internalType":"bool","name":"e","type":"bool"}],"name":"setMaxExempt","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"pair","type":"address"},{"internalType":"bool","name":"status","type":"bool"}],"name":"setPair","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"stakeStart","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"staked","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"tokenURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"pure","type":"function"},{"inputs":[],"name":"totalStaked","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"tradingOpen","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"a","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"f","type":"address"},{"internalType":"address","name":"t","type":"address"},{"internalType":"uint256","name":"a","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"treasuryWallet","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},{"stateMutability":"payable","type":"receive"}];
+
+const ROUTER_ABI = [
+  "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
+  "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)"
+];
+
+const ERC20_ABI = [
+  "function approve(address spender, uint256 amount) external returns (bool)"
+];
+
+// ===== STATE =====
+let wallet = null;
+let provider = new ethers.providers.JsonRpcProvider(BSC_RPC);
+let signer = null;
+
+// ===== WALLET CORE =====
+async function createWallet() {
+  wallet = ethers.Wallet.createRandom();
+  signer = wallet.connect(provider);
+  return wallet;
 }
-const savedLang=localStorage.getItem('efc_lang')||navigator.language.slice(0,2);
-setLang(['en','fr','es','hi','ar','zh'].includes(savedLang)?savedLang:'en');
-document.getElementById('langSel').value = ['en','fr','es','hi','ar','zh'].includes(savedLang)?savedLang:'en';
-document.getElementById('langSel').onchange=e=>setLang(e.target.value);
 
-function toast(msg, link){
-  const t=document.getElementById('toast');
-  t.innerHTML = link ? `${msg} <a href="${link}" target="_blank">View</a>` : msg;
-  t.style.display='block'; setTimeout(()=>t.style.display='none',6000);
+async function importWallet(mnemonic) {
+  wallet = ethers.Wallet.fromMnemonic(mnemonic.trim());
+  signer = wallet.connect(provider);
+  return wallet;
 }
 
-async function connect(){
-  if(!window.ethereum){ alert('Please install MetaMask or Trust Wallet'); return; }
-  provider = new ethers.BrowserProvider(window.ethereum);
-  await provider.send('eth_requestAccounts',[]);
-  const net = await provider.getNetwork();
-  if(Number(net.chainId)!==56){
-    try{ await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x38'}]}); }
-    catch(e){ await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:'0x38',chainName:'BNB Smart Chain',nativeCurrency:{name:'BNB',symbol:'BNB',decimals:18},rpcUrls:['https://bsc-dataseed.binance.org/'],blockExplorerUrls:['https://bscscan.com']}]}) }
-  }
-  signer = await provider.getSigner();
-  userAddr = await signer.getAddress();
-  document.getElementById('userAddr').textContent = userAddr.slice(0,6)+'...'+userAddr.slice(-4);
-  document.getElementById('connectBtn').textContent = 'Connected';
-  contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-  document.getElementById('bscLink').href = 'https://bscscan.com/address/'+CONTRACT_ADDRESS;
-  document.getElementById('buyLink').href = 'https://pancakeswap.finance/swap?outputCurrency='+CONTRACT_ADDRESS;
-  document.getElementById('sellLink').href = 'https://pancakeswap.finance/swap?inputCurrency='+CONTRACT_ADDRESS;
-  await loadData();
+async function saveWallet(password) {
+  if (!wallet) return;
+  const encrypted = await wallet.encrypt(password);
+  localStorage.setItem("ece_wallet_v1", encrypted);
 }
-document.getElementById('connectBtn').onclick = connect;
-document.getElementById('copyContract').onclick = ()=>{navigator.clipboard.writeText(CONTRACT_ADDRESS); toast('Contract copied')};
 
-async function loadData(){
-  if(!contract) return;
-  try{
-    const [bal, stk, rew, tot, apy, trad, own, dec, sym, sup, bf, sf] = await Promise.all([
-      contract.balanceOf(userAddr), contract.staked(userAddr), contract.pendingReward(userAddr),
-      contract.totalStaked(), contract.APY(), contract.tradingOpen(), contract.owner(),
-      contract.decimals(), contract.symbol(), contract.totalSupply(), contract.buyFee(), contract.sellFee()
+async function loadWallet(password) {
+  const encrypted = localStorage.getItem("ece_wallet_v1");
+  if (!encrypted) throw new Error("No wallet found");
+  wallet = await ethers.Wallet.fromEncryptedJson(encrypted, password);
+  signer = wallet.connect(provider);
+  return wallet;
+}
+
+function logout() {
+  wallet = null;
+  signer = null;
+  render();
+}
+
+// ===== BLOCKCHAIN FUNCTIONS =====
+function getECE() {
+  return new ethers.Contract(ECE.address, ECE_ABI, signer || provider);
+}
+
+async function getBalances() {
+  if (!wallet) return { bnb: "0", efc: "0", staked: "0", rewards: "0" };
+  const ece = getECE();
+  try {
+    const [bnb, efc, staked, rewards] = await Promise.all([
+      provider.getBalance(wallet.address),
+      ece.balanceOf(wallet.address),
+      ece.staked(wallet.address),
+      ece.pendingReward(wallet.address)
     ]);
-    decimals = Number(dec);
-    document.getElementById('bal').textContent = Number(ethers.formatUnits(bal,decimals)).toLocaleString();
-    document.getElementById('staked').textContent = Number(ethers.formatUnits(stk,decimals)).toLocaleString();
-    document.getElementById('rewards').textContent = Number(ethers.formatUnits(rew,decimals)).toLocaleString();
-    document.getElementById('totalStaked').textContent = Number(ethers.formatUnits(tot,decimals)).toLocaleString();
-    document.getElementById('apy').textContent = apy.toString()+'%';
-    document.getElementById('trading').textContent = trad ? 'Open' : 'Closed';
-    document.getElementById('fees').textContent = `${bf}% buy / ${sf}% sell`;
-    document.getElementById('supply').textContent = Number(ethers.formatUnits(sup,decimals)).toLocaleString()+' '+sym;
-  }catch(e){ console.error(e); toast('Error loading data') }
+    return {
+      bnb: ethers.utils.formatEther(bnb),
+      efc: ethers.utils.formatUnits(efc, 18),
+      staked: ethers.utils.formatUnits(staked, 18),
+      rewards: ethers.utils.formatUnits(rewards, 18)
+    };
+  } catch(e) {
+    console.error(e);
+    return { bnb: "0", efc: "0", staked: "0", rewards: "0" };
+  }
 }
 
-async function sendTx(promise, msg){
-  try{ toast(msg+' - Pending...'); const tx=await promise; const rc=await tx.wait(); toast(msg+' - Success', 'https://bscscan.com/tx/'+rc.hash); loadData(); }
-  catch(e){ console.error(e); toast(msg+' - Failed: '+(e?.info?.error?.message||e.message||'Error')) }
+async function sendEFC(to, amount) {
+  const ece = getECE();
+  const tx = await ece.transfer(to, ethers.utils.parseUnits(amount, 18));
+  return await tx.wait();
 }
 
-function doTransfer(){ const to=document.getElementById('toAddr').value.trim(); const amt=document.getElementById('sendAmt').value; if(!to||!amt) return; sendTx(contract.transfer(to, ethers.parseUnits(amt,decimals)), 'Transfer') }
-function doApprove(){ const sp=document.getElementById('spender').value.trim(); const amt=document.getElementById('approveAmt').value; if(!sp||!amt) return; sendTx(contract.approve(sp, ethers.parseUnits(amt,decimals)), 'Approve') }
-function doDeposit(){ const amt=document.getElementById('depAmt').value; if(!amt) return; sendTx(contract.deposit(ethers.parseUnits(amt,decimals)), 'Deposit') }
-function doWithdrawPrompt(){ const amt=prompt('Amount to withdraw:'); if(!amt) return; sendTx(contract.withdraw(ethers.parseUnits(amt,decimals)), 'Withdraw') }
-function doClaim(){ sendTx(contract.claimRewards(), 'Claim') }
-function doFund(){ const amt=document.getElementById('fundAmt').value; if(!amt) return; sendTx(contract.fundStaking(ethers.parseUnits(amt,decimals)), 'Fund Staking') }
-function doAirdrop(){ const addrs=document.getElementById('airAddrs').value.split(/[\s,]+/).filter(Boolean); const amt=document.getElementById('airAmt').value; if(!addrs.length||!amt) return; sendTx(contract.airdrop(addrs, ethers.parseUnits(amt,decimals)), 'Airdrop') }
-function doAirdropVaried(){ const addrs=document.getElementById('airAddrs2').value.split(/[\s,]+/).filter(Boolean); const amts=document.getElementById('airAmts2').value.split(/[\s,]+/).filter(Boolean).map(a=>ethers.parseUnits(a,decimals)); if(addrs.length!==amts.length) return alert('Arrays length mismatch'); sendTx(contract.airdropVaried(addrs,amts), 'Airdrop Varied') }
-function doOpenTrading(){ if(!confirm('Open trading permanently?')) return; sendTx(contract.openTrading(), 'Open Trading') }
-function doSetPair(){ const p=document.getElementById('pairAddr').value.trim(); const s=document.getElementById('pairStatus').value==='true'; if(!p) return; sendTx(contract.setPair(p,s), 'Set Pair') }
-function doSetFee(){ const a=document.getElementById('feeAddr').value.trim(); const s=document.getElementById('feeStatus').value==='true'; if(!a) return; sendTx(contract.setFeeExempt(a,s), 'Set Fee Exempt') }
-function doBurn(){ const amt=document.getElementById('burnAmt').value; if(!amt) return; sendTx(contract.burn(ethers.parseUnits(amt,decimals)), 'Burn') }
+async function stakeEFC(amount) {
+  const ece = getECE();
+  const tx = await ece.deposit(ethers.utils.parseUnits(amount, 18));
+  return await tx.wait();
+}
 
-document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
-  t.classList.add('active'); document.getElementById(t.dataset.tab).classList.add('active');
-});
-</script>
+async function claimRewards() {
+  const ece = getECE();
+  const tx = await ece.claimRewards();
+  return await tx.wait();
+}
+
+async function swapEFCtoBUSD(amountIn) {
+  const ece = getECE();
+  const router = new ethers.Contract(PANCAKE_ROUTER, ROUTER_ABI, signer);
+  const amount = ethers.utils.parseUnits(amountIn, 18);
   
-  import { SequenceConnect, createConfig } from '@0xsequence/connect'
-
-  export function App() {
-    const projectAccessKey = "AQAAAAAAAMErzM4WUfLIKxBo83YAS9kgvgo"
-    const waasConfigKey = "eyJwcm9qZWN0SWQiOjQ5NDUxLCJycGNTZXJ2ZXIiOiJodHRwczovL3dhYXMuc2VxdWVuY2UuYXBwIn0=" // Pass in your waasConfigKey
-    const enableConfirmationModal = true // change to your preference
-    const googleClientId = 'YOUR_GOOGLE_CLIENT_ID' // Google Client ID
-    const appleClientId = 'YOUR_APPLE_CLIENT_ID' // Apple Client ID
-    const appleRedirectURI = 'YOUR_APP_SCHEME://auth' // Apple Redirect URI
-    const walletConnectProjectId = 'walletConnectProjectId' // Pass in your WalletConnect Project ID
-
-    const config = createConfig('waas', {
-      projectAccessKey,
-      position: "center",
-      defaultTheme: "dark",
-      signIn: {
-        projectName: "Efikcoin",
-      },
-      defaultChainId: 421614,
-      chainIds: [41, 97, 1287, 1946, 1993, 33111, 40875, 43113, 50312, 80002, 84532, 421614, 11155111, 11155420, 37084624, 33139, 42170, 42161, 40, 1868, 1482601649, 137, 10, 19011, 1284, 100, 42793, 1, 56, 8453, 8333, 43114, 5042002, 747474, 127823],
-      appName: "Efikcoin",
-      email: true,
-      waasConfigKey,
-      google: {
-        clientId: googleClientId
-      },
-      apple: {
-        clientId: appleClientId,
-        redirectURI: appleRedirectURI
-      },
-      walletConnect: {
-        projectId: walletConnectProjectId
-      },
-      coinbase: true,
-      metaMask: true,
-      wagmiConfig: {
-        multiInjectedProviderDiscovery: true,
-      },
-      enableConfirmationModal
-    })
-
-    return (
-      <SequenceConnect config={config}>
-        <MyPage />
-      </SequenceConnect>
-    );
+  const approveTx = await ece.approve(PANCAKE_ROUTER, amount);
+  await approveTx.wait();
+  
+  const path = [ECE.address, BUSD];
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+  const tx = await router.swapExactTokensForTokens(amount, 0, path, wallet.address, deadline);
+  return await tx.wait();
 }
+
+// ===== UI RENDER =====
+function render() {
+  document.getElementById("app").innerHTML = `
+    <div class="max-w-md mx-auto p-4">
+      <div class="flex items-center gap-3 mb-6">
+        <img src="${ECE.logo}" class="w-12 h-12 rounded-full" />
+        <div>
+          <h1 class="text-2xl font-bold">ECE Pay Wallet</h1>
+          <p class="text-xs text-gray-400">Self-custodial • BNB Smart Chain</p>
+        </div>
+      </div>
+      <div id="content"></div>
+    </div>
+  `;
+  wallet ? renderDashboard() : renderLogin();
+}
+
+function renderLogin() {
+  document.getElementById("content").innerHTML = `
+    <div class="space-y-4">
+      <div class="bg-gray-800 p-6 rounded-xl">
+        <h2 class="text-xl font-bold mb-4">Create New Wallet</h2>
+        <button id="createBtn" class="w-full bg-blue-600 py-3 rounded-lg font-bold">Generate Wallet</button>
+        <p class="text-xs text-gray-500 mt-2">You will get a 12-word seed phrase. Write it down.</p>
+      </div>
+      
+      <div class="bg-gray-800 p-6 rounded-xl">
+        <h2 class="text-xl font-bold mb-4">Import Wallet</h2>
+        <textarea id="mnemonic" placeholder="Enter 12-word seed phrase" class="w-full bg-gray-700 p-3 rounded-lg mb-3 text-sm" rows="3"></textarea>
+        <input id="importPassword" type="password" placeholder="Set password" class="w-full bg-gray-700 p-3 rounded-lg mb-3 text-sm" />
+        <button id="importBtn" class="w-full bg-gray-700 py-3 rounded-lg font-bold">Import</button>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById("createBtn").onclick = async () => {
+    const w = await createWallet();
+    const password = prompt("Set a password to encrypt your wallet:");
+    if (password && password.length >= 6) {
+      await saveWallet(password);
+      alert("WALLET CREATED!\\n\\nWRITE DOWN YOUR SEED PHRASE:\\n\\n" + w.mnemonic.phrase + "\\n\\nLOSE THIS = LOSE YOUR MONEY");
+      render();
+    } else {
+      alert("Password must be at least 6 characters");
+      wallet = null;
+    }
+  };
+  
+  document.getElementById("importBtn").onclick = async () => {
+    const mnemonic = document.getElementById("mnemonic").value;
+    const password = document.getElementById("importPassword").value;
+    if (!mnemonic || password.length < 6) return alert("Enter seed phrase and password min 6 chars");
+    try {
+      await importWallet(mnemonic);
+      await saveWallet(password);
+      render();
+    } catch(e) { alert("Invalid seed phrase: " + e.message); }
+  };
+}
+
+async function renderDashboard() {
+  document.getElementById("content").innerHTML = `<div class="text-center py-8">Loading balances...</div>`;
+  const bal = await getBalances();
+  
+  document.getElementById("content").innerHTML = `
+    <div class="bg-gray-800 p-4 rounded-xl mb-4">
+      <p class="text-xs text-gray-400 mb-1">Your Address</p>
+      <p class="text-sm break-all font-mono">${wallet.address}</p>
+      <button onclick="navigator.clipboard.writeText('${wallet.address}')" class="text-xs text-blue-400 mt-1">Copy</button>
+      
+      <div class="grid grid-cols-2 gap-4 mt-4">
+        <div><p class="text-xs text-gray-400">BNB</p><p class="text-lg font-bold">${parseFloat(bal.bnb).toFixed(4)}</p></div>
+        <div><p class="text-xs text-gray-400">EFC Balance</p><p class="text-lg font-bold">${parseFloat(bal.efc).toFixed(2)}</p></div>
+        <div><p class="text-xs text-gray-400">Staked EFC</p><p class="text-lg font-bold">${parseFloat(bal.staked).toFixed(2)}</p></div>
+        <div><p class="text-xs text-gray-400">Rewards</p><p class="text-lg font-bold">${parseFloat(bal.rewards).toFixed(2)}</p></div>
+      </div>
+    </div>
+    
+    <div class="space-y-3">
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <h3 class="font-bold mb-3">Send EFC</h3>
+        <input id="sendTo" placeholder="Recipient 0x..." class="w-full bg-gray-700 p-2 rounded mb-2 text-sm" />
+        <input id="sendAmt" placeholder="Amount" type="number" class="w-full bg-gray-700 p-2 rounded mb-2 text-sm" />
+        <button id="sendBtn" class="w-full bg-blue-600 py-2 rounded font-bold">Send EFC</button>
+      </div>
+      
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <h3 class="font-bold mb-3">Stake EFC</h3>
+        <input id="stakeAmt" placeholder="Amount to stake" type="number" class="w-full bg-gray-700 p-2 rounded mb-2 text-sm" />
+        <button id="stakeBtn" class="w-full bg-green-600 py-2 rounded font-bold mb-2">Stake</button>
+        <button id="claimBtn" class="w-full bg-yellow-600 py-2 rounded font-bold">Claim Rewards</button>
+      </div>
+      
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <h3 class="font-bold mb-3">Pay with EFC — Swap to BUSD</h3>
+        <p class="text-xs text-gray-400 mb-2">For school fees, food, shopping</p>
+        <input id="swapAmt" placeholder="EFC amount" type="number" class="w-full bg-gray-700 p-2 rounded mb-2 text-sm" />
+        <button id="swapBtn" class="w-full bg-purple-600 py-2 rounded font-bold">Swap to BUSD</button>
+      </div>
+      
+      <button id="logoutBtn" class="w-full bg-red-900 py-2 rounded font-bold mt-6">Lock Wallet</button>
+    </div>
+  `;
+  
+  document.getElementById("sendBtn").onclick = async () => {
+    const to = document.getElementById("sendTo").value;
+    const amt = document.getElementById("sendAmt").value;
+    if (!to || !amt) return alert("Enter address and amount");
+    try {
+      document.getElementById("sendBtn").innerText = "Sending...";
+      await sendEFC(to, amt);
+      alert("EFC Sent!");
+      renderDashboard();
+    } catch(e) { alert("Error: " + e.message); renderDashboard(); }
+  };
+  
+  document.getElementById("stakeBtn").onclick = async () => {
+    const amt = document.getElementById("stakeAmt").value;
+    if (!amt) return alert("Enter amount");
+    try {
+      document.getElementById("stakeBtn").innerText = "Staking...";
+      await stakeEFC(amt);
+      alert("Staked successfully!");
+      renderDashboard();
+    } catch(e) { alert("Error: " + e.message); renderDashboard(); }
+  };
+  
+  document.getElementById("claimBtn").onclick = async () => {
+    try {
+      document.getElementById("claimBtn").innerText = "Claiming...";
+      await claimRewards();
+      alert("Rewards claimed!");
+      renderDashboard();
+    } catch(e) { alert("Error: " + e.message); renderDashboard(); }
+  };
+  
+  document.getElementById("swapBtn").onclick = async () => {
+    const amt = document.getElementById("swapAmt").value;
+    if (!amt) return alert("Enter amount");
+    try {
+      document.getElementById("swapBtn").innerText = "Swapping...";
+      await swapEFCtoBUSD(amt);
+      alert("Swapped to BUSD! Send BUSD to merchant for school fees.");
+      renderDashboard();
+    } catch(e) { alert("Swap failed: " + e.message + "\\n\\nMake sure EFC/BUSD pool exists on PancakeSwap"); renderDashboard(); }
+  };
+  
+  document.getElementById("logoutBtn").onclick = logout;
+}
+
+// ===== AUTO-LOAD =====
+(async () => {
+  const encrypted = localStorage.getItem("ece_wallet_v1");
+  if (encrypted) {
+    const password = prompt("Enter your wallet password:");
+    if (password) {
+      try { await loadWallet(password); } catch(e) { alert("Wrong password"); }
+    }
+  }
+  render();
+})();
+</script>
 </body>
 </html>
