@@ -2,20 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ECE Pay Wallet | Efikcoin EFC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ECE Pay Smart Wallet | Efikcoin EFC</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
   <link rel="icon" href="https://ipfs.io/ipfs/bafybeihrzyodihyp5met2hs32ppj37qlowuxarvs2lnlrgujgrlwxc7fwe">
-  <style>body{font-family:Inter,sans-serif}</style>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .tab-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; }
+    #google_translate_element select { background: #374151; color: white; border: none; padding: 4px; border-radius: 6px; }
+  </style>
 </head>
-<body class="bg-gray-900 text-white">
-  <div id="app" class="min-h-screen"></div>
+<body class="bg-gray-950 text-white">
+  <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col"></div>
 
 <script>
-const { ethers } = window.ethers;
-
-// ===== YOUR EFKICOIN CONFIG =====
+// ===== CONFIG: Efikcoin EFC =====
 const ECE = {
   address: "0x677ce9cba67f7484ea951a12897ce780cfd8fed1",
   symbol: "EFC",
@@ -25,28 +28,26 @@ const ECE = {
   chainId: 56
 };
 
-const BSC_RPC = "https://bsc-dataseed.binance.org/";
-const PANCAKE_ROUTER = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
-const BUSD = "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56";
-const WBNB = "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c";
+const CONFIG = {
+  RPC: "https://bsc-dataseed.binance.org/",
+  PANCAKE_ROUTER: "0x10ED43C718714eb63d5aA57B78B54704E256024E",
+  BUSD: "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
+  WBNB: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"
+};
 
 const ECE_ABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"recipients","type":"uint256"}],"name":"AirdropCompleted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"RewardsClaimed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Staked","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Unstaked","type":"event"},{"inputs":[],"name":"APY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"DEAD","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address[]","name":"recipients","type":"address[]"},{"internalType":"uint256","name":"amountEach","type":"uint256"}],"name":"airdrop","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address[]","name":"recipients","type":"address[]"},{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"name":"airdropVaried","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"o","type":"address"},{"internalType":"address","name":"s","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"s","type":"address"},{"internalType":"uint256","name":"a","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"a","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"burn","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"buyFee","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"claimRewards","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"deposit","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"fundStaking","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isFeeExempt","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isMaxExempt","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isPair","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxWallet","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"openTrading","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"pendingReward","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"sellFee","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"a","type":"address"},{"internalType":"bool","name":"e","type":"bool"}],"name":"setFeeExempt","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"a","type":"address"},{"internalType":"bool","name":"e","type":"bool"}],"name":"setMaxExempt","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"pair","type":"address"},{"internalType":"bool","name":"status","type":"bool"}],"name":"setPair","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"stakeStart","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"staked","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"tokenURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"pure","type":"function"},{"inputs":[],"name":"totalStaked","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"tradingOpen","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"a","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"f","type":"address"},{"internalType":"address","name":"t","type":"address"},{"internalType":"uint256","name":"a","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"treasuryWallet","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},{"stateMutability":"payable","type":"receive"}];
 
-const ROUTER_ABI = [
-  "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
-  "function getAmountsOut(uint amountIn, address[] memory path) public view returns (uint[] memory amounts)"
-];
-
-const ERC20_ABI = [
-  "function approve(address spender, uint256 amount) external returns (bool)"
-];
+const ROUTER_ABI = ["function swapExactTokensForTokens(uint amountIn,uint amountOutMin,address[] calldata path,address to,uint deadline) external returns (uint[] memory amounts)","function swapExactETHForTokens(uint amountOutMin,address[] calldata path,address to,uint deadline) external payable returns (uint[] memory amounts)","function swapExactTokensForETH(uint amountIn,uint amountOutMin,address[] calldata path,address to,uint deadline) external returns (uint[] memory amounts)","function getAmountsOut(uint amountIn,address[] memory path) public view returns (uint[] memory amounts)"];
 
 // ===== STATE =====
+const { ethers } = window.ethers;
 let wallet = null;
-let provider = new ethers.providers.JsonRpcProvider(BSC_RPC);
+let provider = new ethers.providers.JsonRpcProvider(CONFIG.RPC);
 let signer = null;
+let currentTab = 'wallet';
+let balances = { bnb: 0, efc: 0, staked: 0, rewards: 0, busd: 0 };
 
-// ===== WALLET CORE =====
+// ===== CORE WALLET =====
 async function createWallet() {
   wallet = ethers.Wallet.createRandom();
   signer = wallet.connect(provider);
@@ -60,241 +61,409 @@ async function importWallet(mnemonic) {
 }
 
 async function saveWallet(password) {
-  if (!wallet) return;
   const encrypted = await wallet.encrypt(password);
-  localStorage.setItem("ece_wallet_v1", encrypted);
+  localStorage.setItem("ece_smart_wallet", encrypted);
 }
 
 async function loadWallet(password) {
-  const encrypted = localStorage.getItem("ece_wallet_v1");
-  if (!encrypted) throw new Error("No wallet found");
+  const encrypted = localStorage.getItem("ece_smart_wallet");
+  if (!encrypted) throw new Error("No wallet");
   wallet = await ethers.Wallet.fromEncryptedJson(encrypted, password);
   signer = wallet.connect(provider);
-  return wallet;
 }
 
-function logout() {
+function lockWallet() {
   wallet = null;
   signer = null;
   render();
 }
 
-// ===== BLOCKCHAIN FUNCTIONS =====
-function getECE() {
-  return new ethers.Contract(ECE.address, ECE_ABI, signer || provider);
-}
+// ===== BLOCKCHAIN =====
+function getECE() { return new ethers.Contract(ECE.address, ECE_ABI, signer || provider); }
+function getRouter() { return new ethers.Contract(CONFIG.PANCAKE_ROUTER, ROUTER_ABI, signer); }
+function getToken(addr) { return new ethers.Contract(addr, ["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)","function approve(address,uint256) returns (bool)"], signer); }
 
-async function getBalances() {
-  if (!wallet) return { bnb: "0", efc: "0", staked: "0", rewards: "0" };
-  const ece = getECE();
+async function refreshBalances() {
+  if (!wallet) return;
   try {
-    const [bnb, efc, staked, rewards] = await Promise.all([
+    const ece = getECE();
+    const busd = getToken(CONFIG.BUSD);
+    const [bnb, efc, staked, rewards, busdBal] = await Promise.all([
       provider.getBalance(wallet.address),
       ece.balanceOf(wallet.address),
       ece.staked(wallet.address),
-      ece.pendingReward(wallet.address)
+      ece.pendingReward(wallet.address),
+      busd.balanceOf(wallet.address)
     ]);
-    return {
-      bnb: ethers.utils.formatEther(bnb),
-      efc: ethers.utils.formatUnits(efc, 18),
-      staked: ethers.utils.formatUnits(staked, 18),
-      rewards: ethers.utils.formatUnits(rewards, 18)
+    balances = {
+      bnb: parseFloat(ethers.utils.formatEther(bnb)),
+      efc: parseFloat(ethers.utils.formatUnits(efc, 18)),
+      staked: parseFloat(ethers.utils.formatUnits(staked, 18)),
+      rewards: parseFloat(ethers.utils.formatUnits(rewards, 18)),
+      busd: parseFloat(ethers.utils.formatUnits(busdBal, 18))
     };
-  } catch(e) {
-    console.error(e);
-    return { bnb: "0", efc: "0", staked: "0", rewards: "0" };
+  } catch(e) { console.error(e); }
+}
+
+async function sendToken(tokenAddr, to, amount, decimals=18) {
+  if (tokenAddr === 'BNB') {
+    const tx = await signer.sendTransaction({ to, value: ethers.utils.parseEther(amount) });
+    return await tx.wait();
   }
-}
-
-async function sendEFC(to, amount) {
-  const ece = getECE();
-  const tx = await ece.transfer(to, ethers.utils.parseUnits(amount, 18));
+  const token = getToken(tokenAddr);
+  const tx = await token.transfer(to, ethers.utils.parseUnits(amount, decimals));
   return await tx.wait();
 }
 
-async function stakeEFC(amount) {
-  const ece = getECE();
-  const tx = await ece.deposit(ethers.utils.parseUnits(amount, 18));
-  return await tx.wait();
-}
-
-async function claimRewards() {
-  const ece = getECE();
-  const tx = await ece.claimRewards();
-  return await tx.wait();
-}
-
-async function swapEFCtoBUSD(amountIn) {
-  const ece = getECE();
-  const router = new ethers.Contract(PANCAKE_ROUTER, ROUTER_ABI, signer);
-  const amount = ethers.utils.parseUnits(amountIn, 18);
-  
-  const approveTx = await ece.approve(PANCAKE_ROUTER, amount);
-  await approveTx.wait();
-  
-  const path = [ECE.address, BUSD];
+async function swapTokens(fromToken, toToken, amount) {
+  const router = getRouter();
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-  const tx = await router.swapExactTokensForTokens(amount, 0, path, wallet.address, deadline);
-  return await tx.wait();
+  
+  if (fromToken === 'BNB') {
+    const path = [CONFIG.WBNB, toToken];
+    const tx = await router.swapExactETHForTokens(0, path, wallet.address, deadline, { value: ethers.utils.parseEther(amount) });
+    return await tx.wait();
+  }
+  
+  const token = getToken(fromToken);
+  await (await token.approve(CONFIG.PANCAKE_ROUTER, ethers.utils.parseUnits(amount, 18))).wait();
+  
+  if (toToken === 'BNB') {
+    const path = [fromToken, CONFIG.WBNB];
+    const tx = await router.swapExactTokensForETH(ethers.utils.parseUnits(amount, 18), 0, path, wallet.address, deadline);
+    return await tx.wait();
+  } else {
+    const path = [fromToken, toToken];
+    const tx = await router.swapExactTokensForTokens(ethers.utils.parseUnits(amount, 18), 0, path, wallet.address, deadline);
+    return await tx.wait();
+  }
 }
 
 // ===== UI RENDER =====
 function render() {
   document.getElementById("app").innerHTML = `
-    <div class="max-w-md mx-auto p-4">
-      <div class="flex items-center gap-3 mb-6">
-        <img src="${ECE.logo}" class="w-12 h-12 rounded-full" />
-        <div>
-          <h1 class="text-2xl font-bold">ECE Pay Wallet</h1>
-          <p class="text-xs text-gray-400">Self-custodial • BNB Smart Chain</p>
+    <div class="flex-1 flex flex-col">
+      <div id="header"></div>
+      <div id="content" class="flex-1 overflow-y-auto"></div>
+      <div id="navbar"></div>
+    </div>
+  `;
+  renderHeader();
+  renderNavbar();
+  if (!wallet) renderOnboarding();
+  else renderTab();
+}
+
+function renderHeader() {
+  document.getElementById("header").innerHTML = `
+    <div class="bg-gray-900 p-4 flex justify-between items-center border-b border-gray-800">
+      <div class="flex items-center gap-2">
+        <img src="${ECE.logo}" class="w-8 h-8 rounded-full" />
+        <span class="font-bold">ECE Pay</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <div id="google_translate_element"></div>
+        ${wallet ? `<button onclick="lockWallet()" class="text-xs bg-red-900 px-2 py-1 rounded">Lock</button>` : ''}
+      </div>
+    </div>
+  `;
+  if (!window.googleTranslateElementInit) {
+    window.googleTranslateElementInit = () => new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'en,fr,es,ar,sw,ha,ig,yo,pt,zh-CN'}, 'google_translate_element');
+    const script = document.createElement('script');
+    script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+    document.head.appendChild(script);
+  }
+}
+
+function renderNavbar() {
+  if (!wallet) return document.getElementById("navbar").innerHTML = '';
+  document.getElementById("navbar").innerHTML = `
+    <div class="bg-gray-900 border-t border-gray-800 grid grid-cols-5 text-xs">
+      ${['wallet','swap','earn','browser','settings'].map(tab => `
+        <button onclick="switchTab('${tab}')" class="py-3 ${currentTab===tab?'tab-active':'text-gray-400'}">
+          ${tab.charAt(0).toUpperCase()+tab.slice(1)}
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  renderTab();
+  renderNavbar();
+}
+
+function renderOnboarding() {
+  document.getElementById("content").innerHTML = `
+    <div class="p-6 space-y-6">
+      <div class="text-center py-8">
+        <img src="${ECE.logo}" class="w-20 h-20 rounded-full mx-auto mb-4" />
+        <h1 class="text-3xl font-bold mb-2">ECE Pay Smart Wallet</h1>
+        <p class="text-gray-400">Buy, Trade, Pay School Fees with Efikcoin</p>
+      </div>
+      
+      <button onclick="createNewWallet()" class="w-full bg-blue-600 py-4 rounded-xl font-bold text-lg">Create New Wallet</button>
+      
+      <div class="bg-gray-800 p-4 rounded-xl">
+        <p class="text-sm font-bold mb-2">Import Existing Wallet</p>
+        <textarea id="seedInput" placeholder="Enter 12 or 24 word seed phrase" class="w-full bg-gray-700 p-3 rounded-lg mb-2 text-sm" rows="3"></textarea>
+        <input id="passInput" type="password" placeholder="Set password (min 6 chars)" class="w-full bg-gray-700 p-3 rounded-lg mb-2 text-sm" />
+        <button onclick="importExistingWallet()" class="w-full bg-gray-700 py-3 rounded-lg font-bold">Import</button>
+      </div>
+    </div>
+  `;
+}
+
+async function createNewWallet() {
+  const w = await createWallet();
+  const pass = prompt("Set a password to encrypt wallet (min 6 characters):");
+  if (!pass || pass.length < 6) return alert("Password too short");
+  await saveWallet(pass);
+  alert("WALLET CREATED!\\n\\nWRITE DOWN YOUR SEED PHRASE:\\n\\n" + w.mnemonic.phrase + "\\n\\nYOU WILL LOSE ALL FUNDS IF YOU LOSE THIS");
+  render();
+}
+
+async function importExistingWallet() {
+  const seed = document.getElementById("seedInput").value;
+  const pass = document.getElementById("passInput").value;
+  if (!seed || pass.length < 6) return alert("Enter seed and password min 6 chars");
+  try {
+    await importWallet(seed);
+    await saveWallet(pass);
+    render();
+  } catch(e) { alert("Invalid seed phrase"); }
+}
+
+async function renderTab() {
+  await refreshBalances();
+  const content = document.getElementById("content");
+  if (currentTab === 'wallet') content.innerHTML = renderWalletTab();
+  if (currentTab === 'swap') content.innerHTML = renderSwapTab();
+  if (currentTab === 'earn') content.innerHTML = renderEarnTab();
+  if (currentTab === 'browser') content.innerHTML = renderBrowserTab();
+  if (currentTab === 'settings') content.innerHTML = renderSettingsTab();
+  
+  if (currentTab === 'wallet') QRCode.toCanvas(document.getElementById('qrcode'), wallet.address, { width: 180 });
+}
+
+function renderWalletTab() {
+  return `
+    <div class="p-4 space-y-4">
+      <div class="bg-gradient-to-br from-blue-600 to-purple-600 p-5 rounded-2xl">
+        <p class="text-sm opacity-80">Total Balance</p>
+        <p class="text-3xl font-bold">$${(balances.bnb*600 + balances.efc*0.01 + balances.busd).toFixed(2)}</p>
+        <p class="text-xs mt-2 opacity-80 break-all">${wallet.address}</p>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-gray-800 p-4 rounded-xl">
+          <p class="text-xs text-gray-400">BNB</p>
+          <p class="text-xl font-bold">${balances.bnb.toFixed(4)}</p>
+        </div>
+        <div class="bg-gray-800 p-4 rounded-xl">
+          <p class="text-xs text-gray-400">EFC</p>
+          <p class="text-xl font-bold">${balances.efc.toFixed(2)}</p>
+        </div>
+        <div class="bg-gray-800 p-4 rounded-xl">
+          <p class="text-xs text-gray-400">BUSD</p>
+          <p class="text-xl font-bold">${balances.busd.toFixed(2)}</p>
+        </div>
+        <div class="bg-gray-800 p-4 rounded-xl">
+          <p class="text-xs text-gray-400">Staked EFC</p>
+          <p class="text-xl font-bold">${balances.staked.toFixed(2)}</p>
         </div>
       </div>
-      <div id="content"></div>
-    </div>
-  `;
-  wallet ? renderDashboard() : renderLogin();
-}
-
-function renderLogin() {
-  document.getElementById("content").innerHTML = `
-    <div class="space-y-4">
-      <div class="bg-gray-800 p-6 rounded-xl">
-        <h2 class="text-xl font-bold mb-4">Create New Wallet</h2>
-        <button id="createBtn" class="w-full bg-blue-600 py-3 rounded-lg font-bold">Generate Wallet</button>
-        <p class="text-xs text-gray-500 mt-2">You will get a 12-word seed phrase. Write it down.</p>
-      </div>
       
-      <div class="bg-gray-800 p-6 rounded-xl">
-        <h2 class="text-xl font-bold mb-4">Import Wallet</h2>
-        <textarea id="mnemonic" placeholder="Enter 12-word seed phrase" class="w-full bg-gray-700 p-3 rounded-lg mb-3 text-sm" rows="3"></textarea>
-        <input id="importPassword" type="password" placeholder="Set password" class="w-full bg-gray-700 p-3 rounded-lg mb-3 text-sm" />
-        <button id="importBtn" class="w-full bg-gray-700 py-3 rounded-lg font-bold">Import</button>
-      </div>
-    </div>
-  `;
-  
-  document.getElementById("createBtn").onclick = async () => {
-    const w = await createWallet();
-    const password = prompt("Set a password to encrypt your wallet:");
-    if (password && password.length >= 6) {
-      await saveWallet(password);
-      alert("WALLET CREATED!\\n\\nWRITE DOWN YOUR SEED PHRASE:\\n\\n" + w.mnemonic.phrase + "\\n\\nLOSE THIS = LOSE YOUR MONEY");
-      render();
-    } else {
-      alert("Password must be at least 6 characters");
-      wallet = null;
-    }
-  };
-  
-  document.getElementById("importBtn").onclick = async () => {
-    const mnemonic = document.getElementById("mnemonic").value;
-    const password = document.getElementById("importPassword").value;
-    if (!mnemonic || password.length < 6) return alert("Enter seed phrase and password min 6 chars");
-    try {
-      await importWallet(mnemonic);
-      await saveWallet(password);
-      render();
-    } catch(e) { alert("Invalid seed phrase: " + e.message); }
-  };
-}
-
-async function renderDashboard() {
-  document.getElementById("content").innerHTML = `<div class="text-center py-8">Loading balances...</div>`;
-  const bal = await getBalances();
-  
-  document.getElementById("content").innerHTML = `
-    <div class="bg-gray-800 p-4 rounded-xl mb-4">
-      <p class="text-xs text-gray-400 mb-1">Your Address</p>
-      <p class="text-sm break-all font-mono">${wallet.address}</p>
-      <button onclick="navigator.clipboard.writeText('${wallet.address}')" class="text-xs text-blue-400 mt-1">Copy</button>
-      
-      <div class="grid grid-cols-2 gap-4 mt-4">
-        <div><p class="text-xs text-gray-400">BNB</p><p class="text-lg font-bold">${parseFloat(bal.bnb).toFixed(4)}</p></div>
-        <div><p class="text-xs text-gray-400">EFC Balance</p><p class="text-lg font-bold">${parseFloat(bal.efc).toFixed(2)}</p></div>
-        <div><p class="text-xs text-gray-400">Staked EFC</p><p class="text-lg font-bold">${parseFloat(bal.staked).toFixed(2)}</p></div>
-        <div><p class="text-xs text-gray-400">Rewards</p><p class="text-lg font-bold">${parseFloat(bal.rewards).toFixed(2)}</p></div>
-      </div>
-    </div>
-    
-    <div class="space-y-3">
-      <div class="bg-gray-800 p-4 rounded-xl">
-        <h3 class="font-bold mb-3">Send EFC</h3>
-        <input id="sendTo" placeholder="Recipient 0x..." class="w-full bg-gray-700 p-2 rounded mb-2 text-sm" />
-        <input id="sendAmt" placeholder="Amount" type="number" class="w-full bg-gray-700 p-2 rounded mb-2 text-sm" />
-        <button id="sendBtn" class="w-full bg-blue-600 py-2 rounded font-bold">Send EFC</button>
+      <div class="grid grid-cols-4 gap-2">
+        <button onclick="showSendModal()" class="bg-blue-600 py-3 rounded-xl text-sm font-bold">Send</button>
+        <button onclick="showReceiveModal()" class="bg-green-600 py-3 rounded-xl text-sm font-bold">Receive</button>
+        <button onclick="switchTab('swap')" class="bg-purple-600 py-3 rounded-xl text-sm font-bold">Swap</button>
+        <button onclick="showPayMerchant()" class="bg-orange-600 py-3 rounded-xl text-sm font-bold">Pay</button>
       </div>
       
       <div class="bg-gray-800 p-4 rounded-xl">
-        <h3 class="font-bold mb-3">Stake EFC</h3>
-        <input id="stakeAmt" placeholder="Amount to stake" type="number" class="w-full bg-gray-700 p-2 rounded mb-2 text-sm" />
-        <button id="stakeBtn" class="w-full bg-green-600 py-2 rounded font-bold mb-2">Stake</button>
-        <button id="claimBtn" class="w-full bg-yellow-600 py-2 rounded font-bold">Claim Rewards</button>
+        <p class="font-bold mb-2">Receive EFC/BNB</p>
+        <canvas id="qrcode" class="mx-auto bg-white p-2 rounded"></canvas>
       </div>
-      
-      <div class="bg-gray-800 p-4 rounded-xl">
-        <h3 class="font-bold mb-3">Pay with EFC — Swap to BUSD</h3>
-        <p class="text-xs text-gray-400 mb-2">For school fees, food, shopping</p>
-        <input id="swapAmt" placeholder="EFC amount" type="number" class="w-full bg-gray-700 p-2 rounded mb-2 text-sm" />
-        <button id="swapBtn" class="w-full bg-purple-600 py-2 rounded font-bold">Swap to BUSD</button>
-      </div>
-      
-      <button id="logoutBtn" class="w-full bg-red-900 py-2 rounded font-bold mt-6">Lock Wallet</button>
     </div>
   `;
-  
-  document.getElementById("sendBtn").onclick = async () => {
-    const to = document.getElementById("sendTo").value;
-    const amt = document.getElementById("sendAmt").value;
-    if (!to || !amt) return alert("Enter address and amount");
-    try {
-      document.getElementById("sendBtn").innerText = "Sending...";
-      await sendEFC(to, amt);
-      alert("EFC Sent!");
-      renderDashboard();
-    } catch(e) { alert("Error: " + e.message); renderDashboard(); }
-  };
-  
-  document.getElementById("stakeBtn").onclick = async () => {
-    const amt = document.getElementById("stakeAmt").value;
-    if (!amt) return alert("Enter amount");
-    try {
-      document.getElementById("stakeBtn").innerText = "Staking...";
-      await stakeEFC(amt);
-      alert("Staked successfully!");
-      renderDashboard();
-    } catch(e) { alert("Error: " + e.message); renderDashboard(); }
-  };
-  
-  document.getElementById("claimBtn").onclick = async () => {
-    try {
-      document.getElementById("claimBtn").innerText = "Claiming...";
-      await claimRewards();
-      alert("Rewards claimed!");
-      renderDashboard();
-    } catch(e) { alert("Error: " + e.message); renderDashboard(); }
-  };
-  
-  document.getElementById("swapBtn").onclick = async () => {
-    const amt = document.getElementById("swapAmt").value;
-    if (!amt) return alert("Enter amount");
-    try {
-      document.getElementById("swapBtn").innerText = "Swapping...";
-      await swapEFCtoBUSD(amt);
-      alert("Swapped to BUSD! Send BUSD to merchant for school fees.");
-      renderDashboard();
-    } catch(e) { alert("Swap failed: " + e.message + "\\n\\nMake sure EFC/BUSD pool exists on PancakeSwap"); renderDashboard(); }
-  };
-  
-  document.getElementById("logoutBtn").onclick = logout;
 }
 
-// ===== AUTO-LOAD =====
+function renderSwapTab() {
+  return `
+    <div class="p-4 space-y-4">
+      <h2 class="text-2xl font-bold">Swap Tokens</h2>
+      <div class="bg-gray-800 p-4 rounded-xl space-y-3">
+        <div>
+          <p class="text-sm text-gray-400 mb-1">From</p>
+          <select id="fromToken" class="w-full bg-gray-700 p-3 rounded-lg">
+            <option value="${ECE.address}">EFC - ${balances.efc.toFixed(2)}</option>
+            <option value="BNB">BNB - ${balances.bnb.toFixed(4)}</option>
+            <option value="${CONFIG.BUSD}">BUSD - ${balances.busd.toFixed(2)}</option>
+          </select>
+          <input id="fromAmt" type="number" placeholder="0.0" class="w-full bg-gray-700 p-3 rounded-lg mt-2" />
+        </div>
+        
+        <div class="text-center">↓</div>
+        
+        <div>
+          <p class="text-sm text-gray-400 mb-1">To</p>
+          <select id="toToken" class="w-full bg-gray-700 p-3 rounded-lg">
+            <option value="${CONFIG.BUSD}">BUSD</option>
+            <option value="BNB">BNB</option>
+            <option value="${ECE.address}">EFC</option>
+          </select>
+        </div>
+        
+        <button onclick="executeSwap()" class="w-full bg-blue-600 py-4 rounded-xl font-bold">Swap Now</button>
+      </div>
+      <p class="text-xs text-gray-500 text-center">Powered by PancakeSwap. For school fees: Swap EFC → BUSD</p>
+    </div>
+  `;
+}
+
+function renderEarnTab() {
+  return `
+    <div class="p-4 space-y-4">
+      <h2 class="text-2xl font-bold">Earn with EFC</h2>
+      <div class="bg-gray-800 p-5 rounded-xl">
+        <p class="text-sm text-gray-400">Staked Balance</p>
+        <p class="text-3xl font-bold mb-1">${balances.staked.toFixed(2)} EFC</p>
+        <p class="text-sm text-green-400">Pending Rewards: ${balances.rewards.toFixed(4)} EFC</p>
+      </div>
+      
+      <div class="bg-gray-800 p-4 rounded-xl space-y-3">
+        <input id="stakeAmt" type="number" placeholder="Amount to stake" class="w-full bg-gray-700 p-3 rounded-lg" />
+        <button onclick="stakeNow()" class="w-full bg-green-600 py-3 rounded-xl font-bold">Stake EFC</button>
+        <button onclick="claimNow()" class="w-full bg-yellow-600 py-3 rounded-xl font-bold">Claim Rewards</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderBrowserTab() {
+  const dapps = [
+    {name:'PancakeSwap',url:'https://pancakeswap.finance',desc:'Trade tokens'},
+    {name:'ApeSwap',url:'https://apeswap.finance',desc:'Farm & Stake'},
+    {name:'Jumia',url:'https://jumia.com.ng',desc:'Shop online - pay with BUSD'},
+    {name:'WAEC Direct',url:'https://waecdirect.org',desc:'Check results - pay with crypto'},
+  ];
+  return `
+    <div class="p-4 space-y-4">
+      <h2 class="text-2xl font-bold">Discover dApps</h2>
+      <input placeholder="Search or enter dApp URL" class="w-full bg-gray-800 p-3 rounded-xl" onkeypress="if(event.key==='Enter')openDApp(this.value)" />
+      <div class="space-y-2">
+        ${dapps.map(d=>`
+          <button onclick="openDApp('${d.url}')" class="w-full bg-gray-800 p-4 rounded-xl text-left">
+            <p class="font-bold">${d.name}</p>
+            <p class="text-xs text-gray-400">${d.desc}</p>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderSettingsTab() {
+  return `
+    <div class="p-4 space-y-3">
+      <h2 class="text-2xl font-bold mb-4">Settings</h2>
+      ${[
+        {t:'Export Private Key',a:'exportKey()'},
+        {t:'View Seed Phrase',a:'viewSeed()'},
+        {t:'Change Password',a:'alert("Re-import wallet to change")'},
+        {t:'Network: BNB Smart Chain',a:''},
+        {t:'Currency: USD',a:''},
+        {t:'Support: t.me/efikcoin',a:'window.open("https://t.me/efikcoin")'},
+        {t:'Lock Wallet',a:'lockWallet()'}
+      ].map(i=>`<button onclick="${i.a}" class="w-full bg-gray-800 p-4 rounded-xl text-left">${i.t}</button>`).join('')}
+    </div>
+  `;
+}
+
+// ===== ACTIONS =====
+async function showSendModal() {
+  const to = prompt("Recipient Address:");
+  const amt = prompt("Amount EFC:");
+  if (!to || !amt) return;
+  try {
+    await sendToken(ECE.address, to, amt);
+    alert("EFC Sent Successfully!");
+    renderTab();
+  } catch(e) { alert("Send failed: " + e.message); }
+}
+
+function showReceiveModal() {
+  prompt("Your EFC Deposit Address:", wallet.address);
+}
+
+async function executeSwap() {
+  const from = document.getElementById("fromToken").value;
+  const to = document.getElementById("toToken").value;
+  const amt = document.getElementById("fromAmt").value;
+  if (!amt || from === to) return alert("Enter amount and select different tokens");
+  try {
+    await swapTokens(from, to, amt);
+    alert("Swap Successful!");
+    renderTab();
+  } catch(e) { alert("Swap failed: " + e.message); }
+}
+
+async function stakeNow() {
+  const amt = document.getElementById("stakeAmt").value;
+  if (!amt) return;
+  try {
+    await (await getECE().deposit(ethers.utils.parseUnits(amt, 18))).wait();
+    alert("Staked!");
+    renderTab();
+  } catch(e) { alert("Stake failed: " + e.message); }
+}
+
+async function claimNow() {
+  try {
+    await (await getECE().claimRewards()).wait();
+    alert("Rewards Claimed!");
+    renderTab();
+  } catch(e) { alert("Claim failed: " + e.message); }
+}
+
+function showPayMerchant() {
+  const merchant = prompt("Enter Merchant Wallet Address or BUSD Address:");
+  const amt = prompt("Amount in EFC to pay:");
+  if (!merchant || !amt) return;
+  if (confirm(`Pay ${amt} EFC to merchant?\\n\\nThis will auto-swap EFC → BUSD and send.`)) {
+    swapTokens(ECE.address, CONFIG.BUSD, amt).then(() => {
+      sendToken(CONFIG.BUSD, merchant, "0").then(() => alert("Payment sent to merchant!"));
+    }).catch(e => alert("Payment failed: " + e.message));
+  }
+}
+
+function openDApp(url) {
+  window.open(url, '_blank');
+}
+
+function exportKey() {
+  if (confirm("WARNING: Never share your private key. Anyone with this can steal your funds. Continue?")) {
+    prompt("Your Private Key:", wallet.privateKey);
+  }
+}
+
+async function viewSeed() {
+  const pass = prompt("Enter password to view seed phrase:");
+  try {
+    const w = await ethers.Wallet.fromEncryptedJson(localStorage.getItem("ece_smart_wallet"), pass);
+    alert("SEED PHRASE:\\n\\n" + w.mnemonic.phrase + "\\n\\nWRITE THIS DOWN. NEVER SHARE.");
+  } catch(e) { alert("Wrong password"); }
+}
+
+// ===== INIT =====
 (async () => {
-  const encrypted = localStorage.getItem("ece_wallet_v1");
+  const encrypted = localStorage.getItem("ece_smart_wallet");
   if (encrypted) {
-    const password = prompt("Enter your wallet password:");
-    if (password) {
-      try { await loadWallet(password); } catch(e) { alert("Wrong password"); }
+    const pass = prompt("Welcome back! Enter password to unlock ECE Pay:");
+    if (pass) {
+      try { await loadWallet(pass); } catch(e) { localStorage.removeItem("ece_smart_wallet"); }
     }
   }
   render();
