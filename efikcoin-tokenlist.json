@@ -1,0 +1,50 @@
+{
+  "name": "EFIKCOIN Token List",
+  "logoURI": "https://ipfs.io/ipfs/bafybeihrzyodihyp5met2hs32ppj37qlowuxarvs2lnlrgujgrlwxc7fwe",
+  "keywords": [
+    "efikcoin",
+    "efc",
+    "life empowerment"
+  ],
+  "timestamp": "2026-06-07T15:10:46Z",
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0
+  },
+  "tags": {
+    "community": {
+      "name": "Community",
+      "description": "Built for human benefit"
+    },
+    "utility": {
+      "name": "Utility",
+      "description": "Life Empowerment"
+    }
+  },
+  "tokens": [
+    {
+      "chainId": 56,
+      "address": "0x677Ce9CBa67f7484ea951a12897CE780cFd8fED1",
+      "name": "EFIKCOIN",
+      "symbol": "EFC",
+      "decimals": 18,
+      "logoURI": "https://ipfs.io/ipfs/bafybeihrzyodihyp5met2hs32ppj37qlowuxarvs2lnlrgujgrlwxc7fwe",
+      "tags": [
+        "community",
+        "utility"
+      ],
+      "extensions": {
+        "description": "Life Empowerment for Sustainable Human Lives - Built in truth, love and peace",
+        "website": "https://efikcoineternalv.github.io/EFC/",
+        "github": "https://github.com/efikcoineternalv/EFC",
+        "twitter": "",
+        "telegram": "",
+        "pairAddress": "0xa1DD6C528882Dc19EcCbC967F50bBC121A29630e",
+        "ipfsLogo": "ipfs://bafybeihrzyodihyp5met2hs32ppj37qlowuxarvs2lnlrgujgrlwxc7fwe",
+        "founded": "2025",
+        "origin": "Nigeria"
+      }
+    }
+  ]
+}

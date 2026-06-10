@@ -1,0 +1,15 @@
+The website should have a dark theme with gold accents for EFIKCOIN (EFC) - a Life Empowerment Token on BNB Smart Chain.
+
+Design a powerful blockchain dApp with:
+- Large gold EFC logo at top, title "EFIKCOIN (EFC)" and subtitle "Life Empowerment for Sustainable Human Lives"
+- Connect Wallet button (MetaMask, Trust Wallet) for BSC Mainnet
+- Dashboard with 5 cards: EFC Balance, Staked Balance, Pending Rewards, Total Staked, Trading Status
+- Main actions in tabs: 
+  1) Transfer - send EFC to any address
+  2) Stake - Deposit, Withdraw, Claim Rewards (8% APY)
+  3) Airdrop - send to multiple wallets (owner only)
+  4) Trading - openTrading and setPair functions
+- Show contract address 0x677Ce9CBa67f7484ea951a12897CE780cFd8fED1 with copy button
+- Language selector for worldwide usage: English, French, Spanish, Hindi, Arabic, Chinese
+- Footer with links to BscScan, GitHub, and treasury wallet
+- Mobile responsive, clean, professional, trustworthy design for global adoption

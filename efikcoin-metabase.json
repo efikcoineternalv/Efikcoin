@@ -1,0 +1,39 @@
+{
+  "token": "EFIKCOIN",
+  "ticker": "EFC",
+  "blockchain": "BNB Smart Chain",
+  "standard": "BEP-20",
+  "contractAddress": "0x677Ce9CBa67f7484ea951a12897CE780cFd8fED1",
+  "pairAddress": "0xa1DD6C528882Dc19EcCbC967F50bBC121A29630e",
+  "decimals": 18,
+  "totalSupply": "1000000000",
+  "mission": "Life Empowerment for Sustainable Human Lives",
+  "values": [
+    "Truth",
+    "Love",
+    "Peace",
+    "Human Benefit"
+  ],
+  "logo": {
+    "ipfs": "ipfs://bafybeihrzyodihyp5met2hs32ppj37qlowuxarvs2lnlrgujgrlwxc7fwe",
+    "https": "https://ipfs.io/ipfs/bafybeihrzyodihyp5met2hs32ppj37qlowuxarvs2lnlrgujgrlwxc7fwe",
+    "png_256": "Efikcoin-256.png",
+    "png_512": "Efikcoin-512.png"
+  },
+  "links": {
+    "website": "https://efikcoineternalv.github.io/EFC/",
+    "github": "https://github.com/efikcoineternalv/EFC",
+    "bscscan": "https://bscscan.com/token/0x677Ce9CBa67f7484ea951a12897CE780cFd8fED1",
+    "pancakeswap": "https://pancakeswap.finance/swap?outputCurrency=0x677Ce9CBa67f7484ea951a12897CE780cFd8fED1"
+  },
+  "features": [
+    "transfer",
+    "stake",
+    "claimRewards",
+    "deposit",
+    "withdraw",
+    "airdrop",
+    "8% APY"
+  ],
+  "owner": "Ece (EFIKCOIN Eternal)"
+}
